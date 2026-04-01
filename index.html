@@ -30,6 +30,9 @@
         body { 
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
         }
         input[type="range"] {
             accent-color: #1e3a8a;
@@ -171,7 +174,7 @@
                     return;
                 }
 
-                const message = `Bonjour ! 👋\n\nLe Ministère de la Santé organise une campagne du 15 au 19 avril pour vacciner nos enfants contre la Rougeole, la Rubéole et la Polio.\n\nCes maladies tuent chaque jour. Engageons-nous : disons OUI à la vaccination et NON à ces maladies ! \n\nJe viens de créer mon visuel de soutien à cette campagne, faites comme moi et générez le vôtre ici :\n👉 https://obedmuhindo.github.io/campagne-pev-rdc/\n\nVacciner c'est aimer. Vacciner c'est protéger. 🇨🇩`;
+                const message = `Bonjour ! 👋\n\nLe Ministère de la Santé organise une campagne du 15 au 19 avril pour vacciner nos enfants contre la Rougeole, la Rubéole et la Polio.\n\nCes maladies tuent chaque jour. Engageons-nous : disons OUI à la vaccination et NON à ces maladies ! \n\nJe viens de créer mon visuel de soutien à cette campagne, faites comme moi et générez le vôtre ici :\n👉 https://bit.ly/filtre_polioRR_Avril26\n\nVacciner c'est aimer. Vacciner c'est protéger. 🇨🇩`;
 
                 setIsExporting(true);
                 const canvas = canvasRef.current;
@@ -241,14 +244,29 @@
 
             return (
                 <div className="min-h-screen flex flex-col items-center bg-gray-50 pb-12">
-                    <header className="w-full bg-white shadow-sm py-4 px-6 flex flex-col items-center space-y-3 border-b-4 border-pev-blue">
-                        <img src={ASSETS.logo} alt="Logo" className="h-16 object-contain" />
-                        <div className="text-center space-y-1">
-                            <h1 className="text-lg md:text-xl font-bold text-pev-blue uppercase tracking-tight leading-tight">
-                                Engageons nous pour en finir avec la <span className="text-pev-orange">Rougeole</span>, la <span className="text-pev-orange">Rubéole</span> et la <span className="text-pev-orange">Polio</span> en RDC
+                    <header className="w-full bg-white shadow-md py-6 px-4 flex flex-col items-center space-y-4 border-b-4 border-pev-blue relative overflow-hidden">
+                        {/* Décorations subtiles en arrière-plan */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-pev-orange/5 rounded-full -mr-16 -mt-16"></div>
+                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-pev-blue/5 rounded-full -ml-12 -mb-12"></div>
+                        
+                        <img src={ASSETS.logo} alt="Logo" className="h-14 md:h-16 object-contain relative z-10" />
+                        
+                        <div className="text-center space-y-3 relative z-10 max-w-2xl">
+                            <h1 className="text-xl md:text-2xl font-extrabold text-pev-blue uppercase tracking-tight leading-[1.1]">
+                                Engageons-nous pour en finir avec la <br className="hidden md:block" />
+                                <span className="text-pev-orange">Rougeole</span>, 
+                                la <span className="text-pev-orange mx-1">Rubéole</span> 
+                                et la <span className="text-pev-orange">Polio</span> en RDC
                             </h1>
-                            <p className="text-xs md:text-sm text-pev-blue/70 font-semibold uppercase tracking-widest">
-                                Générez votre filtre d'appui à la sensibilisation pour la campagne d'avril 2026
+                            
+                            <div className="inline-block bg-pev-blue/5 px-4 py-1.5 rounded-full border border-pev-blue/10">
+                                <p className="text-[10px] md:text-xs text-pev-blue font-bold uppercase tracking-[0.2em]">
+                                    Campagne de vaccination • Avril 2026
+                                </p>
+                            </div>
+                            
+                            <p className="text-xs md:text-sm text-gray-500 font-medium italic">
+                                "Générez votre filtre, et sensibilisons pour la santé de nos enfants"
                             </p>
                         </div>
                     </header>
@@ -328,25 +346,28 @@
                                 />
                             </div>
 
-                            <div className="flex gap-3 pt-2">
-                                <button onClick={resetControls} className="p-3 rounded-xl border-2 border-gray-200 text-gray-400 hover:bg-gray-50 transition-colors">
-                                    <Icon name="rotate" className="w-6 h-6" />
-                                </button>
-                                <button 
-                                    onClick={() => fileInputRef.current.click()}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-pev-blue text-pev-blue font-bold hover:bg-pev-blue/5 transition-all uppercase text-sm"
-                                >
-                                    <Icon name="image" className="w-5 h-5" /> Ajouter votre photo
-                                </button>
+                            <div className="space-y-3 pt-2">
+                                <div className="flex gap-3">
+                                    <button onClick={resetControls} className="p-3 rounded-xl border-2 border-gray-200 text-gray-400 hover:bg-gray-50 transition-colors flex items-center justify-center">
+                                        <Icon name="rotate" className="w-6 h-6" />
+                                    </button>
+                                    <button 
+                                        onClick={() => fileInputRef.current.click()}
+                                        className="flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl border-2 border-pev-blue text-pev-blue font-bold hover:bg-pev-blue/5 transition-all uppercase text-[10px] xs:text-xs sm:text-sm"
+                                    >
+                                        <Icon name="image" className="w-4 h-4 sm:w-5 sm:h-5" /> Ajouter votre photo
+                                    </button>
+                                </div>
+                                
                                 <button 
                                     onClick={handleDownload}
                                     disabled={!userImage || isExporting}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-pev-orange text-white font-bold shadow-lg shadow-pev-orange/30 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all uppercase text-sm"
+                                    className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl bg-pev-orange text-white font-bold shadow-lg shadow-pev-orange/30 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all uppercase text-sm"
                                 >
                                     {isExporting ? (
                                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                     ) : (
-                                        <><Icon name="download" className="w-5 h-5" /> Télécharger</>
+                                        <><Icon name="download" className="w-5 h-5" /> Télécharger mon visuel</>
                                     )}
                                 </button>
                             </div>
