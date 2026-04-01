@@ -188,9 +188,15 @@
 
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
                     const link = document.createElement('a');
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
                     link.download = `StopPolioRDC_${Date.now()}.jpg`;
                     link.href = dataUrl;
                     link.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                    }, 100);
                 } catch (error) {
                     console.error("Erreur d'exportation:", error);
                     alert("Une erreur est survenue lors de la création de l'image.");
@@ -243,6 +249,20 @@
                     }
 
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+                    // Déclenchement du téléchargement automatique (comme le bouton télécharger)
+                    const downloadLink = document.createElement('a');
+                    downloadLink.style.display = 'none';
+                    document.body.appendChild(downloadLink);
+                    downloadLink.download = `StopPolioRDC_${Date.now()}.jpg`;
+                    downloadLink.href = dataUrl;
+                    downloadLink.click();
+                    
+                    // On laisse un petit délai avant de retirer le lien pour certains navigateurs mobiles
+                    setTimeout(() => {
+                        document.body.removeChild(downloadLink);
+                    }, 100);
+
                     const blob = await (await fetch(dataUrl)).blob();
                     const file = new File([blob], 'StopPolioRDC.jpg', { type: 'image/jpeg' });
 
