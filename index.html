@@ -3,246 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Filtre Photo - PEV RDC</title>
+    <title>Filtre Photo PEV RDC</title>
     <style>
-        :root {
-            --primary: #1a2fbe;
-            --accent: #f05a28;
-            --bg: #f8f9fa;
-            --text: #333;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 15px 40px 15px;
-        }
-        /* En-tête avec Logo */
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 400px;
-        }
-        .logo-ministere {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 15px;
-        }
-        .header h2 { color: var(--primary); font-size: 1.4em; }
-        .header p { font-size: 0.9em; color: #666; margin-top: 5px; }
-
-        /* Boutons principaux */
-        .btn {
-            display: block;
-            width: 100%;
-            max-width: 400px;
-            padding: 16px;
-            text-align: center;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 1.1em;
-            border: none;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-bottom: 15px;
-            color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .btn-upload { background-color: var(--accent); }
-        .btn-upload:active { background-color: #d04b1e; }
-        .btn-download { background-color: var(--primary); }
-        .btn-download:active { background-color: #12228a; }
-
-        /* Zone de dessin (Canvas) */
-        .canvas-container {
-            width: 100%;
-            max-width: 400px;
-            aspect-ratio: 1 / 1;
-            background-color: #e9ecef;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-            margin-bottom: 25px;
-            position: relative;
-        }
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        /* Panneau de contrôle (Sliders) */
-        .controls-panel {
-            width: 100%;
-            max-width: 400px;
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            display: none; /* Caché jusqu'à l'upload */
-            margin-bottom: 20px;
-        }
-        .slider-group {
-            margin-bottom: 15px;
-        }
-        .slider-group:last-child { margin-bottom: 0; }
-        .slider-group label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9em;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 8px;
-        }
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            background: #ddd;
-            border-radius: 5px;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            background: var(--primary);
-            border-radius: 50%;
-            cursor: pointer;
-        }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; padding: 20px; }
+        .container { width: 100%; max-width: 500px; text-align: center; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        #logo-min { width: 120px; margin-bottom: 10px; }
+        .preview-box { position: relative; width: 100%; aspect-ratio: 1/1; background: #eee; overflow: hidden; margin: 20px 0; border: 2px solid #ddd; }
+        #canvasOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        #userPhoto { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: move; }
+        .controls { display: none; background: #f9f9f9; padding: 15px; border-radius: 10px; }
+        input[type=range] { width: 100%; margin: 10px 0; }
+        .btn { padding: 15px 25px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; color: white; }
+        .btn-up { background: #f05a28; }
+        .btn-dl { background: #1a2fbe; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <img src="Logo ministere_PEV.png" alt="Ministère de la Santé" class="logo-ministere">
-        <h2>Campagne de Vaccination</h2>
-        <p>Générez votre visuel #StopPolioRDC</p>
+<div class="container">
+    <img src="Logo ministere_PEV.png" id="logo-min">
+    <h3>Créez votre visuel de campagne</h3>
+    
+    <div class="preview-box" id="capture-zone">
+        <img id="userPhoto" src="" style="display:none;">
+        <img id="canvasOverlay" src="Filtre campagne polio & RR pour les photos de profil.svg">
     </div>
 
-    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
-    <button class="btn btn-upload" onclick="document.getElementById('imageUpload').click()">
-        📸 1. Choisir ma photo
-    </button>
+    <input type="file" id="fileInput" style="display:none" accept="image/*">
+    <button class="btn btn-up" onclick="document.getElementById('fileInput').click()">📸 CHOISIR UNE PHOTO</button>
 
-    <div class="canvas-container">
-        <canvas id="mainCanvas" width="1080" height="1080"></canvas>
+    <div class="controls" id="ctrlPanel">
+        <label>🔍 Zoom</label>
+        <input type="range" id="zoom" min="0.1" max="3" step="0.01" value="1">
+        <label>↔️ Déplacer Horizontal</label>
+        <input type="range" id="posX" min="-200" max="200" value="0">
+        <label>↕️ Déplacer Vertical</label>
+        <input type="range" id="posY" min="-200" max="200" value="0">
+        <button class="btn btn-dl" id="dlBtn">📥 TÉLÉCHARGER LE VISUEL</button>
     </div>
+</div>
 
-    <div class="controls-panel" id="controlsPanel">
-        <div class="slider-group">
-            <label><span>🔍 Zoom</span></label>
-            <input type="range" id="zoomSlider" min="0.5" max="3" step="0.05" value="1">
-        </div>
-        <div class="slider-group">
-            <label><span>↔️ Gauche / Droite</span></label>
-            <input type="range" id="xSlider" min="-500" max="500" step="5" value="0">
-        </div>
-        <div class="slider-group">
-            <label><span>↕️ Haut / Bas</span></label>
-            <input type="range" id="ySlider" min="-500" max="500" step="5" value="0">
-        </div>
-    </div>
-
-    <button class="btn btn-download" id="downloadBtn" style="display: none;">
-        📥 2. Télécharger mon visuel
-    </button>
-
-    <script>
-        const canvas = document.getElementById('mainCanvas');
-        const ctx = canvas.getContext('2d');
-        const imageUpload = document.getElementById('imageUpload');
-        const controlsPanel = document.getElementById('controlsPanel');
-        const downloadBtn = document.getElementById('downloadBtn');
-
-        let userImg = null;
-        let filterImg = new Image();
-        filterImg.src = 'Filtre campagne polio & RR pour les photos de profil.svg';
-
-        // Variables de positionnement
-        let scale = 1;
-        let dx = 0;
-        let dy = 0;
-
-        // Dessiner le filtre par défaut même sans photo
-        filterImg.onload = drawCanvas;
-
-        function drawCanvas() {
-            // Nettoyer le canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#ffffff"; // Fond blanc
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Dessiner la photo de l'utilisateur si elle existe
-            if (userImg) {
-                const centerX = canvas.width / 2 + dx;
-                const centerY = canvas.height / 2 + dy;
-                const imgW = userImg.width * scale;
-                const imgH = userImg.height * scale;
-
-                ctx.drawImage(userImg, centerX - imgW / 2, centerY - imgH / 2, imgW, imgH);
-            }
-
-            // Dessiner le filtre SVG par dessus
-            if (filterImg.complete && filterImg.naturalWidth !== 0) {
-                ctx.drawImage(filterImg, 0, 0, canvas.width, canvas.height);
-            }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const userPhoto = document.getElementById('userPhoto');
+    const ctrlPanel = document.getElementById('ctrlPanel');
+    
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            userPhoto.src = URL.createObjectURL(file);
+            userPhoto.style.display = 'block';
+            ctrlPanel.style.display = 'block';
         }
+    };
 
-        // Chargement de la photo utilisateur
-        imageUpload.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+    // Ajustements en direct
+    const update = () => {
+        const z = document.getElementById('zoom').value;
+        const x = document.getElementById('posX').value;
+        const y = document.getElementById('posY').value;
+        userPhoto.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${z})`;
+    };
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                userImg = new Image();
-                userImg.onload = function() {
-                    // Calculer un zoom par défaut pour bien remplir le cadre
-                    const scaleX = canvas.width / userImg.width;
-                    const scaleY = canvas.height / userImg.height;
-                    scale = Math.max(scaleX, scaleY); // Remplit la zone
-                    
-                    // Réinitialiser les sliders
-                    document.getElementById('zoomSlider').value = scale;
-                    document.getElementById('xSlider').value = 0;
-                    document.getElementById('ySlider').value = 0;
-                    dx = 0; dy = 0;
+    document.querySelectorAll('input[type=range]').forEach(i => i.oninput = update);
 
-                    // Afficher les contrôles
-                    controlsPanel.style.display = 'block';
-                    downloadBtn.style.display = 'block';
-                    
-                    drawCanvas();
-                };
-                userImg.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+    // Fonction de téléchargement HD
+    document.getElementById('dlBtn').onclick = () => {
+        html2canvas(document.getElementById('capture-zone'), { useCORS: true }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'MaPhoto_Campagne.png';
+            link.href = canvas.toDataURL();
+            link.click();
         });
+    };
+</script>
 
-        // Écouteurs pour les sliders
-        document.getElementById('zoomSlider').addEventListener('input', (e) => { scale = parseFloat(e.target.value); drawCanvas(); });
-        document.getElementById('xSlider').addEventListener('input', (e) => { dx = parseInt(e.target.value); drawCanvas(); });
-        document.getElementById('ySlider').addEventListener('input', (e) => { dy = parseInt(e.target.value); drawCanvas(); });
-
-        // Gestion du téléchargement avec sécurité anti-bug mobile
-        downloadBtn.addEventListener('click', function() {
-            try {
-                const link = document.createElement('a');
-                link.download = 'Profil_StopPolioRDC.jpg';
-                // Convertir le canvas en image
-                link.href = canvas.toDataURL('image/jpeg', 0.9);
-                link.click();
-            } catch (error) {
-                // Si le navigateur bloque le téléchargement (fréquent en local)
-                alert("Votre navigateur bloque le téléchargement direct. Faites un APPUI LONG sur l'image au-dessus pour l'enregistrer dans votre galerie !");
-            }
-        });
-    </script>
 </body>
 </html>
