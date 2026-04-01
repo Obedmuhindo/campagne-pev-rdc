@@ -5,41 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Filtre Photo PEV RDC</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; padding: 20px; }
-        .container { width: 100%; max-width: 500px; text-align: center; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        #logo-min { width: 120px; margin-bottom: 10px; }
-        .preview-box { position: relative; width: 100%; aspect-ratio: 1/1; background: #eee; overflow: hidden; margin: 20px 0; border: 2px solid #ddd; }
-        #canvasOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        #userPhoto { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: move; }
-        .controls { display: none; background: #f9f9f9; padding: 15px; border-radius: 10px; }
-        input[type=range] { width: 100%; margin: 10px 0; }
-        .btn { padding: 15px 25px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; color: white; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; padding: 20px; margin: 0; }
+        .container { width: 100%; max-width: 450px; text-align: center; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        #logo-min { max-width: 150px; margin-bottom: 10px; height: auto; }
+        .preview-box { position: relative; width: 100%; aspect-ratio: 1/1; background: #ddd; overflow: hidden; margin: 15px 0; border: 1px solid #ccc; border-radius: 8px; }
+        #canvasOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; object-fit: contain; }
+        #userPhoto { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: move; max-width: none; }
+        .controls { display: none; background: #f9f9f9; padding: 15px; border-radius: 10px; text-align: left; }
+        .controls label { font-size: 0.8em; font-weight: bold; color: #555; }
+        input[type=range] { width: 100%; margin: 8px 0 15px 0; }
+        .btn { padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; color: white; font-size: 1em; }
         .btn-up { background: #f05a28; }
-        .btn-dl { background: #1a2fbe; }
+        .btn-dl { background: #1a2fbe; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <img src="Logo ministere_PEV.png" id="logo-min">
-    <h3>Créez votre visuel de campagne</h3>
+    <img src="logo.png" id="logo-min" alt="Ministère de la Santé">
+    <h2 style="color:#1a2fbe; font-size: 1.2em; margin: 5px 0;">Campagne Polio & RR</h2>
     
     <div class="preview-box" id="capture-zone">
         <img id="userPhoto" src="" style="display:none;">
-        <img id="canvasOverlay" src="Filtre campagne polio & RR pour les photos de profil.svg">
+        <img id="canvasOverlay" src="filtre.svg">
     </div>
 
     <input type="file" id="fileInput" style="display:none" accept="image/*">
-    <button class="btn btn-up" onclick="document.getElementById('fileInput').click()">📸 CHOISIR UNE PHOTO</button>
+    <button class="btn btn-up" id="btn-trigger">📸 CHOISIR MA PHOTO</button>
 
     <div class="controls" id="ctrlPanel">
-        <label>🔍 Zoom</label>
+        <label>🔍 ZOOM</label>
         <input type="range" id="zoom" min="0.1" max="3" step="0.01" value="1">
-        <label>↔️ Déplacer Horizontal</label>
-        <input type="range" id="posX" min="-200" max="200" value="0">
-        <label>↕️ Déplacer Vertical</label>
-        <input type="range" id="posY" min="-200" max="200" value="0">
-        <button class="btn btn-dl" id="dlBtn">📥 TÉLÉCHARGER LE VISUEL</button>
+        
+        <label>↔️ DÉPLACER (GAUCHE / DROITE)</label>
+        <input type="range" id="posX" min="-300" max="300" value="0">
+        
+        <label>↕️ DÉPLACER (HAUT / BAS)</label>
+        <input type="range" id="posY" min="-300" max="300" value="0">
+        
+        <button class="btn btn-dl" id="dlBtn">📥 TÉLÉCHARGER MON VISUEL</button>
     </div>
 </div>
 
@@ -48,17 +52,24 @@
     const fileInput = document.getElementById('fileInput');
     const userPhoto = document.getElementById('userPhoto');
     const ctrlPanel = document.getElementById('ctrlPanel');
+    const btnTrigger = document.getElementById('btn-trigger');
     
+    btnTrigger.onclick = () => fileInput.click();
+
     fileInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            userPhoto.src = URL.createObjectURL(file);
-            userPhoto.style.display = 'block';
-            ctrlPanel.style.display = 'block';
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                userPhoto.src = event.target.result;
+                userPhoto.style.display = 'block';
+                ctrlPanel.style.display = 'block';
+                btnTrigger.style.display = 'none'; // Cache le bouton upload après sélection
+            };
+            reader.readAsDataURL(file);
         }
     };
 
-    // Ajustements en direct
     const update = () => {
         const z = document.getElementById('zoom').value;
         const x = document.getElementById('posX').value;
@@ -68,12 +79,16 @@
 
     document.querySelectorAll('input[type=range]').forEach(i => i.oninput = update);
 
-    // Fonction de téléchargement HD
     document.getElementById('dlBtn').onclick = () => {
-        html2canvas(document.getElementById('capture-zone'), { useCORS: true }).then(canvas => {
+        const zone = document.getElementById('capture-zone');
+        html2canvas(zone, { 
+            useCORS: true,
+            scale: 2, // Pour une meilleure qualité HD
+            backgroundColor: null 
+        }).then(canvas => {
             const link = document.createElement('a');
-            link.download = 'MaPhoto_Campagne.png';
-            link.href = canvas.toDataURL();
+            link.download = 'Mon_Engagement_Polio.png';
+            link.href = canvas.toDataURL("image/png");
             link.click();
         });
     };
