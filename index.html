@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>#StopPolioRDC - Générateur de Visuel</title>
+    <title>#ZeroPolioRDC - Générateur de Visuel</title>
     
     <!-- Tailwind CSS pour le style -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -45,10 +45,10 @@
     <script type="text/babel" data-presets="react">
         const { useState, useRef, useEffect } = React;
 
-        // Chemins vers vos images (doivent être dans le même dossier sur GitHub)
+        // Chemins vers vos images locales (dans /public)
         const ASSETS = {
-            logo: 'logo.png',
-            filter: 'filtre.png'
+            logo: './logo.png',
+            filter: './filtre.png'
         };
 
         // Composant Icône SVG simple pour éviter les conflits DOM
@@ -75,6 +75,7 @@
             const [posY, setPosY] = useState(0);
             const [isExporting, setIsExporting] = useState(false);
             const [filterLoaded, setFilterLoaded] = useState(false);
+            const [filterDataUrl, setFilterDataUrl] = useState(null); // Version convertie en base64 pour éviter tout souci CORS sur le canvas
 
             const [isDragging, setIsDragging] = useState(false);
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -101,10 +102,44 @@
             }, [isDragging, userImage]);
 
             useEffect(() => {
-                const img = new Image();
-                img.src = ASSETS.filter;
-                img.onload = () => setFilterLoaded(true);
-                img.onerror = () => setFilterLoaded(false);
+                const loadFilter = async () => {
+                    try {
+                        const url = ASSETS.filter + (ASSETS.filter.includes('?') ? '&' : '?') + "t=" + Date.now();
+                        const response = await fetch(url, { mode: 'cors' });
+                        if (!response.ok) throw new Error("HTTP error " + response.status);
+                        const blob = await response.blob();
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            setFilterDataUrl(reader.result);
+                            setFilterLoaded(true);
+                        };
+                        reader.readAsDataURL(blob);
+                    } catch (error) {
+                        console.error("Erreur de chargement CORS du filtre, fallback...", error);
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.onload = () => {
+                            try {
+                                const tempCanvas = document.createElement('canvas');
+                                tempCanvas.width = img.naturalWidth || 1080;
+                                tempCanvas.height = img.naturalHeight || 1080;
+                                const tempCtx = tempCanvas.getContext('2d');
+                                tempCtx.drawImage(img, 0, 0);
+                                setFilterDataUrl(tempCanvas.toDataURL('image/png'));
+                                setFilterLoaded(true);
+                            } catch (e) {
+                                console.error("Erreur conversion canvas fallback", e);
+                                setFilterDataUrl(ASSETS.filter);
+                                setFilterLoaded(true);
+                            }
+                        };
+                        img.onerror = () => {
+                            setFilterLoaded(false);
+                        };
+                        img.src = ASSETS.filter + (ASSETS.filter.includes('?') ? '&' : '?') + "fallback=" + Date.now();
+                    }
+                };
+                loadFilter();
             }, []);
 
             // Gestion du Drag & Drop sur l'image
@@ -161,8 +196,12 @@
                     ctx.clearRect(0, 0, 1080, 1080);
 
                     const img = new Image();
+                    const loadImgPromise = new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = () => reject(new Error("Erreur de chargement de l'image utilisateur"));
+                    });
                     img.src = userImage;
-                    await new Promise((resolve) => (img.onload = resolve));
+                    await loadImgPromise;
 
                     const previewWidth = previewRef.current.clientWidth || 400;
                     const scaleFactor = 1080 / previewWidth;
@@ -193,11 +232,15 @@
 
                     // Dessiner le filtre par-dessus
                     const filterImg = new Image();
-                    filterImg.src = ASSETS.filter;
-                    await new Promise((resolve) => {
+                    if (!filterDataUrl || !filterDataUrl.startsWith('data:')) {
+                        filterImg.crossOrigin = "anonymous";
+                    }
+                    const loadFilterPromise = new Promise((resolve) => {
                         filterImg.onload = resolve;
                         filterImg.onerror = () => resolve(null);
                     });
+                    filterImg.src = filterDataUrl || (ASSETS.filter + (ASSETS.filter.includes('?') ? '&' : '?') + "t=" + Date.now());
+                    await loadFilterPromise;
 
                     if (filterImg.complete && filterImg.naturalWidth > 0) {
                         ctx.drawImage(filterImg, 0, 0, 1080, 1080);
@@ -207,7 +250,7 @@
                     const link = document.createElement('a');
                     link.style.display = 'none';
                     document.body.appendChild(link);
-                    link.download = `StopPolioRDC_${Date.now()}.jpg`;
+                    link.download = `ZeroPolioRDC_${Date.now()}.jpg`;
                     link.href = dataUrl;
                     link.click();
                     
@@ -228,7 +271,23 @@
                     return;
                 }
 
-                const message = `Bonjour ! 👋\n\nLe Ministère de la Santé organise une campagne du 18 au 20 juin pour vacciner nos enfants contre la Polio.\n\nCette maladie paralyse nos enfants s'ils ne sont pas vaccinés. Engageons-nous : disons OUI à la vaccination et NON à cette maladie ! \n\nJe viens de créer mon visuel de soutien à cette campagne, faites comme moi et générez le vôtre ici :\n👉 https://bit.ly/filtre_polioRR_Avril26\n\nVacciner c'est aimer. Vacciner c'est protéger. 🇨🇩`;
+                const message = `Bonjour à toutes et à tous 🙌🏾
+
+Face à la poliomyélite en RDC, mobilisons-nous aux côtés du Ministère de la Santé pour protéger chaque enfant contre cette maladie.
+
+Du 18 au 20 juin 2026, accueillons chaleureusement les vaccinateurs pour que chaque enfant de moins de 5 ans reçoive ses gouttes de vaccin salvatrices.
+
+Chaque goutte compte ! Je viens de créer mon filtre d’engagement. Vous aussi, créez le vôtre et partagez-le pour sensibiliser votre entourage.
+
+✅ Créez votre filtre d’engagement
+✅ Partagez votre message de sensibilisation
+✅ Ensemble, protégeons l'avenir de nos enfants
+
+Créez votre filtre ici :
+https://bit.ly/filtre-cousp-polio-RDC
+
+#ZeroPolioRDC #ChaqueGoutteCompte
+Prévenons. Protégeons. Agissons.`;
 
                 setIsExporting(true);
                 const canvas = canvasRef.current;
@@ -240,8 +299,12 @@
                     // Génération de l'image (même logique que download)
                     ctx.clearRect(0, 0, 1080, 1080);
                     const img = new Image();
+                    const loadImgPromise = new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = () => reject(new Error("Erreur de chargement de l'image utilisateur"));
+                    });
                     img.src = userImage;
-                    await new Promise((resolve) => (img.onload = resolve));
+                    await loadImgPromise;
 
                     const previewWidth = previewRef.current.clientWidth || 400;
                     const scaleFactor = 1080 / previewWidth;
@@ -259,8 +322,16 @@
                     ctx.restore();
 
                     const filterImg = new Image();
-                    filterImg.src = ASSETS.filter;
-                    await new Promise((resolve) => { filterImg.onload = resolve; filterImg.onerror = () => resolve(null); });
+                    if (!filterDataUrl || !filterDataUrl.startsWith('data:')) {
+                        filterImg.crossOrigin = "anonymous";
+                    }
+                    const loadFilterPromise = new Promise((resolve) => {
+                        filterImg.onload = resolve;
+                        filterImg.onerror = () => resolve(null);
+                    });
+                    filterImg.src = filterDataUrl || (ASSETS.filter + (ASSETS.filter.includes('?') ? '&' : '?') + "t=" + Date.now());
+                    await loadFilterPromise;
+
                     if (filterImg.complete && filterImg.naturalWidth > 0) {
                         ctx.drawImage(filterImg, 0, 0, 1080, 1080);
                     }
@@ -271,7 +342,7 @@
                     const downloadLink = document.createElement('a');
                     downloadLink.style.display = 'none';
                     document.body.appendChild(downloadLink);
-                    downloadLink.download = `StopPolioRDC_${Date.now()}.jpg`;
+                    downloadLink.download = `ZeroPolioRDC_${Date.now()}.jpg`;
                     downloadLink.href = dataUrl;
                     downloadLink.click();
                     
@@ -281,14 +352,14 @@
                     }, 100);
 
                     const blob = await (await fetch(dataUrl)).blob();
-                    const file = new File([blob], 'StopPolioRDC.jpg', { type: 'image/jpeg' });
+                    const file = new File([blob], 'ZeroPolioRDC.jpg', { type: 'image/jpeg' });
 
                     // Tentative de partage natif (Image + Texte)
                     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
                             text: message,
-                            title: '#StopPolioRDC'
+                            title: '#ZeroPolioRDC'
                         });
                     } else {
                         // Fallback WhatsApp texte seulement
@@ -321,19 +392,18 @@
                         
                         <div className="text-center space-y-3 relative z-10 max-w-2xl">
                             <h1 className="text-xl md:text-2xl font-extrabold text-pev-blue uppercase tracking-tight leading-[1.1]">
-                                Engageons-nous pour en finir avec la <br className="hidden md:block" />
-                                <span className="text-pev-orange">Polio </span>
-                                dans nos <span className="text-pev-bleu">communautés</span>
+                                Engageons-nous pour barrer la route à la <br className="hidden md:block" />
+                                <span className="text-pev-orange">Poliomyélite</span> en RDC
                             </h1>
                             
                             <div className="inline-block bg-pev-blue/5 px-4 py-1.5 rounded-full border border-pev-blue/10">
                                 <p className="text-[10px] md:text-xs text-pev-blue font-bold uppercase tracking-[0.2em]">
-                                    Campagne de vaccination • Juin 2026
+                                    Campagne Nationale de Vaccination • 18 au 20 Juin 2026
                                 </p>
                             </div>
                             
                             <p className="text-xs md:text-sm text-gray-500 font-medium italic">
-                                "Générez votre filtre, et sensibilisons pour la santé de nos enfants"
+                                "Chaque goutte compte ! Générez votre filtre d'engagement et protégeons nos enfants"
                             </p>
                         </div>
                     </header>
@@ -341,7 +411,12 @@
                     <main className="w-full max-w-md px-4 mt-6 space-y-6">
                         <div 
                             ref={previewRef} 
-                            className={`relative aspect-square w-full bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white ${userImage ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                            className={`relative aspect-square w-full bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white ${userImage ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 group'}`}
+                            onClick={() => {
+                                if (!userImage) {
+                                    fileInputRef.current.click();
+                                }
+                            }}
                             onMouseDown={handleStart}
                             onMouseMove={handleMove}
                             onMouseUp={handleEnd}
@@ -350,7 +425,7 @@
                             onTouchMove={handleMove}
                             onTouchEnd={handleEnd}
                         >
-                            <div className="absolute inset-0 z-0 flex items-center justify-center bg-gray-100">
+                            <div className="absolute inset-0 z-0 flex items-center justify-center bg-gray-100 group-hover:bg-gray-200/40 transition-colors duration-200">
                                 {userImage ? (
                                     <div 
                                         className="w-full h-full flex items-center justify-center pointer-events-none select-none"
@@ -362,9 +437,9 @@
                                         <img src={userImage} alt="Aperçu" className="max-w-none min-w-full min-h-full object-cover" />
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center text-gray-400">
-                                        <Icon name="upload" className="w-12 h-12 mb-2 opacity-20" />
-                                        <p className="text-sm font-medium">Importez votre photo</p>
+                                    <div className="flex flex-col items-center text-gray-400 group-hover:text-pev-blue transition-colors duration-200">
+                                        <Icon name="upload" className="w-12 h-12 mb-2 opacity-20 group-hover:scale-110 group-hover:opacity-60 transition-all duration-200" />
+                                        <p className="text-sm font-bold text-gray-400 group-hover:text-pev-blue transition-colors duration-200">Importez votre photo</p>
                                     </div>
                                 )}
                             </div>
@@ -372,7 +447,7 @@
                             <div 
                                 className="absolute inset-0 z-10 pointer-events-none"
                                 style={{ 
-                                    backgroundImage: `url(${ASSETS.filter})`, 
+                                    backgroundImage: `url(${filterDataUrl || ASSETS.filter})`, 
                                     backgroundSize: 'cover', 
                                     backgroundPosition: 'center' 
                                 }}
@@ -425,12 +500,12 @@
 
                             <div className="space-y-3 pt-2">
                                 <div className="flex gap-3">
-                                    <button onClick={resetControls} className="p-3 rounded-xl border-2 border-gray-200 text-gray-400 hover:bg-gray-50 transition-colors flex items-center justify-center">
+                                    <button onClick={resetControls} className="p-3 rounded-xl border-2 border-gray-200 text-gray-400 hover:bg-gray-50 transition-colors flex items-center justify-center" title="Réinitialiser">
                                         <Icon name="rotate" className="w-6 h-6" />
                                     </button>
                                     <button 
                                         onClick={() => fileInputRef.current.click()}
-                                        className="flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl border-2 border-pev-blue text-pev-blue font-bold hover:bg-pev-blue/5 transition-all uppercase text-[10px] xs:text-xs sm:text-sm"
+                                        className="flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl border-2 border-pev-blue text-pev-blue font-bold hover:bg-pev-blue/5 transition-all"
                                     >
                                         <Icon name="image" className="w-4 h-4 sm:w-5 sm:h-5" /> Ajouter votre photo
                                     </button>
@@ -439,7 +514,7 @@
                                 <button 
                                     onClick={handleDownload}
                                     disabled={!userImage || isExporting}
-                                    className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl bg-pev-orange text-white font-bold shadow-lg shadow-pev-orange/30 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all uppercase text-sm"
+                                    className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl bg-pev-orange text-white font-bold shadow-lg shadow-pev-orange/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
                                 >
                                     {isExporting ? (
                                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -453,10 +528,10 @@
                             <button 
                                 onClick={handleShare}
                                 disabled={!userImage || isExporting}
-                                className="w-full flex items-center justify-center gap-3 py-4 px-4 rounded-xl bg-[#25D366] text-white font-bold shadow-lg shadow-green-200 hover:scale-[1.01] active:scale-95 disabled:opacity-50 transition-all uppercase text-sm mt-4"
+                                className="w-full flex items-center justify-center gap-3 py-4 px-4 rounded-xl bg-[#25D366] text-white font-bold shadow-lg shadow-green-200 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
                             >
-                                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12.031 2a9.978 9.978 0 0 0-9.971 9.97c0 1.956.564 3.778 1.533 5.317L2 22l4.89-1.272A9.913 9.913 0 0 0 12.03 21a9.978 9.978 0 0 0 9.971-9.97A9.978 9.978 0 0 0 12.03 2zm-.029 1.688c4.549 0 8.245 3.696 8.245 8.282a8.216 8.216 0 0 1-8.245 8.281 8.255 8.255 0 0 1-4.223-1.16l-.303-.18-3.13.814.828-3.048-.198-.314a8.232 8.232 0 0 1-1.219-4.393c0-4.586 3.696-8.282 8.245-8.282zM8.342 6.777c-.161 0-.367.042-.544.207-.176.165-.676.66-.676 1.611 0 .95 1.01 1.87 1.151 2.057.142.186 1.942 3.125 4.814 4.254.683.268 1.217.428 1.631.543.687.21 1.312.18 1.805.111.55-.077 1.693-.681 1.93-1.338.236-.657.236-1.22.164-1.338-.071-.118-.268-.186-.56-.328-.291-.143-1.724-.836-1.99-.933-.266-.097-.46-.145-.658.144-.197.29-.763.933-.935 1.127-.172.193-.344.218-.636.075-.29-.143-1.23-.444-2.343-1.422-.866-.76-1.45-1.7-1.622-1.99-.172-.29-.018-.447.128-.59.13-.13.29-.338.437-.508.146-.17.195-.29.292-.483.097-.193.048-.363-.024-.508-.073-.145-.658-1.573-.902-2.153-.238-.567-.481-.49-.658-.499l-.56-.007z"/>
                                 </svg>
                                 Partager sur WhatsApp
                             </button>
@@ -467,7 +542,7 @@
 
                     <footer className="mt-8 text-center text-gray-400 text-xs px-6 max-w-md">
                         <p>Note : Pour un résultat optimal, utilisez une photo bien éclairée.</p>
-                        <p className="mt-2">© 2026 Programme Élargi de Vaccination - RDC</p>
+                        <p className="mt-2">© 2026 Ministère de la Santé - RDC</p>
                     </footer>
                 </div>
             );
