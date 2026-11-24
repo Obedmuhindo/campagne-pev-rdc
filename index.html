@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>#ZeroPolioRDC - Générateur de Visuel</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <meta name="theme-color" content="#1e3a8a" />
 
   <style>
     :root {
@@ -661,6 +663,26 @@ Prévenons. Protégeons. Agissons.`;
 
     messagePreview.textContent = messageText;
 
+    // --- Statistiques d'usage (GoatCounter, sans cookies) ---
+    // Renseigner le code du compte GoatCounter pour activer le comptage (ex. 'stoppolio-rdc').
+    const GOATCOUNTER_CODE = '';
+
+    if (GOATCOUNTER_CODE) {
+      const gc = document.createElement('script');
+      gc.async = true;
+      gc.src = 'https://gc.zgo.at/count.js';
+      gc.dataset.goatcounter = `https://${GOATCOUNTER_CODE}.goatcounter.com/count`;
+      document.head.appendChild(gc);
+    }
+
+    function track(name, title) {
+      try {
+        if (window.goatcounter && typeof window.goatcounter.count === 'function') {
+          window.goatcounter.count({ path: name, title: title || name, event: true });
+        }
+      } catch (e) { /* le comptage ne doit jamais bloquer l'utilisateur */ }
+    }
+
     function setLabel(btn, text) {
       const lbl = btn.querySelector('.lbl');
       if (lbl) lbl.textContent = text;
@@ -799,6 +821,7 @@ Prévenons. Protégeons. Agissons.`;
         }
 
         downloadDataUrl(dataUrl);
+        track('visuel-telecharge', 'Visuel téléchargé');
       } catch (error) {
         console.error(error);
         alert("Une erreur est survenue lors de la création de l'image. Vérifiez que filtre.png est bien à la racine du dépôt.");
@@ -840,6 +863,7 @@ Prévenons. Protégeons. Agissons.`;
             title: '#ZeroPolioRDC',
             text: messageText
           });
+          track('partage-whatsapp', 'Partage via le menu du téléphone');
           return;
         }
 
@@ -847,6 +871,7 @@ Prévenons. Protégeons. Agissons.`;
         generatedImage.src = dataUrl;
         saveOverlay.classList.add('show');
         downloadDataUrl(dataUrl);
+        track('partage-whatsapp', 'Partage WhatsApp (lien)');
 
         window.open(`https://wa.me/?text=${encodeURIComponent(messageText)}`, '_blank');
       } catch (error) {
@@ -888,6 +913,7 @@ Prévenons. Protégeons. Agissons.`;
         placeholder.style.display = 'none';
         resetControls();
         setControlsEnabled(true);
+        track('photo-ajoutee', 'Photo ajoutée');
       };
       reader.readAsDataURL(file);
     });
