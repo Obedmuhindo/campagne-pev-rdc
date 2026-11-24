@@ -778,6 +778,68 @@ Prévenons. Protégeons. Agissons.`;
       posYValue.textContent = posY + ' px';
     }
 
+    // Les photos de téléphone peuvent faire 50 à 200 millions de pixels : le navigateur les affiche
+    // à l'écran mais échoue souvent à les redessiner dans le canvas d'export (fenêtre vide).
+    // On réduit donc la photo dès l'import (2400 px max : largement suffisant pour une fenêtre de 476x576
+    // même avec un zoom de 300 %).
+    const MAX_PHOTO_SIDE = 2400;
+
+    function canvasToJpegDataUrl(source, w, h) {
+      const cv = document.createElement('canvas');
+      cv.width = w;
+      cv.height = h;
+      const cx = cv.getContext('2d');
+      cx.imageSmoothingEnabled = true;
+      cx.imageSmoothingQuality = 'high';
+      cx.drawImage(source, 0, 0, w, h);
+      return cv.toDataURL('image/jpeg', 0.92);
+    }
+
+    async function prepareUserPhoto(file) {
+      const objectUrl = URL.createObjectURL(file);
+      try {
+        // 1) Dimensions réelles (orientation EXIF déjà appliquée par le navigateur)
+        const probe = await loadImage(objectUrl);
+        const w = probe.naturalWidth;
+        const h = probe.naturalHeight;
+        const ratio = Math.min(1, MAX_PHOTO_SIDE / Math.max(w, h));
+        const tw = Math.max(1, Math.round(w * ratio));
+        const th = Math.max(1, Math.round(h * ratio));
+
+        // 2) Décodage directement à taille réduite (économe en mémoire)
+        if (window.createImageBitmap) {
+          try {
+            const bitmap = await createImageBitmap(file, {
+              resizeWidth: tw,
+              resizeHeight: th,
+              resizeQuality: 'high'
+            });
+            const dataUrl = canvasToJpegDataUrl(bitmap, tw, th);
+            if (bitmap.close) bitmap.close();
+            return dataUrl;
+          } catch (e) {
+            console.warn('createImageBitmap indisponible, repli sur <img>', e);
+          }
+        }
+
+        // 3) Repli : redessin classique
+        return canvasToJpegDataUrl(probe, tw, th);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
+    function applyUserPhoto(dataUrl) {
+      userImageData = dataUrl;
+      userPhoto.src = userImageData;
+      userPhoto.style.display = 'block';
+      placeholder.style.display = 'none';
+      resetControls();
+      setControlsEnabled(true);
+      preview.classList.add('has-photo');
+      track('photo-ajoutee', 'Photo ajoutée');
+    }
+
     function resetControls() {
       zoom = 1;
       posX = 0;
@@ -825,10 +887,7 @@ Prévenons. Protégeons. Agissons.`;
       const previewWidth = preview.clientWidth || 400;
       const scaleFactor = 1080 / previewWidth;
 
-      // Fond blanc + découpe sur la fenêtre du filtre
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 1080, 1080);
-
+      // Découpe sur la fenêtre du filtre
       const WIN = ASSETS.window;
       ctx.save();
       ctx.beginPath();
@@ -848,6 +907,21 @@ Prévenons. Protégeons. Agissons.`;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
       ctx.restore();
+
+      // Contrôle : la photo doit avoir été dessinée dans la fenêtre (sinon le navigateur a échoué en silence)
+      const probes = [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
+      const drawn = probes.some(([fx, fy]) =>
+        ctx.getImageData(Math.round(WIN.x + WIN.w * fx), Math.round(WIN.y + WIN.h * fy), 1, 1).data[3] > 0
+      );
+      if (!drawn) {
+        throw new Error('La photo n’a pas été dessinée dans le visuel.');
+      }
+
+      // Fond blanc derrière la photo (évite les bords transparents)
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 1080, 1080);
+      ctx.globalCompositeOperation = 'source-over';
 
       const filterImg = await loadImage(ASSETS.filter);
       ctx.drawImage(filterImg, 0, 0, 1080, 1080);
@@ -888,7 +962,7 @@ Prévenons. Protégeons. Agissons.`;
         track('visuel-telecharge', 'Visuel téléchargé');
       } catch (error) {
         console.error(error);
-        alert("Une erreur est survenue lors de la création de l'image. Vérifiez que filtre.png est bien à la racine du dépôt.");
+        alert("Le visuel n'a pas pu être créé avec cette photo. Essayez avec une autre photo (ou une capture d'écran de la photo).");
       } finally {
         isExporting = false;
         setLabel(downloadBtn, 'Télécharger mon visuel');
@@ -969,18 +1043,13 @@ Prévenons. Protégeons. Agissons.`;
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        userImageData = e.target.result;
-        userPhoto.src = userImageData;
-        userPhoto.style.display = 'block';
-        placeholder.style.display = 'none';
-        resetControls();
-        setControlsEnabled(true);
-        preview.classList.add('has-photo');
-        track('photo-ajoutee', 'Photo ajoutée');
-      };
-      reader.readAsDataURL(file);
+      prepareUserPhoto(file)
+        .then(applyUserPhoto)
+        .catch((error) => {
+          console.error(error);
+          showNotice("Cette photo n'a pas pu être lue. Essayez avec une autre photo.");
+        })
+        .finally(() => { fileInput.value = ''; });
     });
 
     zoomRange.addEventListener('input', (e) => {
