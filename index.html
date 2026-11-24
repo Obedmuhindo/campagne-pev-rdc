@@ -153,7 +153,29 @@
       position: relative;
       box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
       cursor: pointer;
+      /* Le défilement vertical de la page reste possible sur le visuel */
+      touch-action: pan-y;
+    }
+
+    /* Zone de glissement = fenêtre de la photo uniquement (active quand une photo est chargée) */
+    .drag-zone {
+      position: absolute;
+      left: 7.04%;
+      top: 25.37%;
+      width: 44.07%;
+      height: 53.33%;
+      z-index: 3;
+      pointer-events: none;
       touch-action: none;
+    }
+
+    .preview.has-photo .drag-zone {
+      pointer-events: auto;
+      cursor: grab;
+    }
+
+    .preview.has-photo {
+      cursor: default;
     }
 
     .photo-layer {
@@ -527,6 +549,7 @@
           <img id="userPhoto" alt="Aperçu" style="display:none;" />
         </div>
         <div class="filter-layer"></div>
+        <div id="dragZone" class="drag-zone" aria-hidden="true"></div>
         <canvas id="canvas"></canvas>
       </div>
 
@@ -913,6 +936,7 @@ Prévenons. Protégeons. Agissons.`;
         placeholder.style.display = 'none';
         resetControls();
         setControlsEnabled(true);
+        preview.classList.add('has-photo');
         track('photo-ajoutee', 'Photo ajoutée');
       };
       reader.readAsDataURL(file);
@@ -983,14 +1007,16 @@ Prévenons. Protégeons. Agissons.`;
       updatePreviewTransform();
     }
 
-    preview.addEventListener('mousedown', startDrag);
-    preview.addEventListener('mousemove', moveDrag);
+    const dragZone = document.getElementById('dragZone');
+
+    dragZone.addEventListener('mousedown', startDrag);
+    dragZone.addEventListener('mousemove', moveDrag);
     window.addEventListener('mouseup', endDrag);
 
-    preview.addEventListener('touchstart', startDrag, { passive: false });
-    preview.addEventListener('touchmove', moveDrag, { passive: false });
-    preview.addEventListener('touchend', endDrag);
-    preview.addEventListener('touchcancel', endDrag);
+    dragZone.addEventListener('touchstart', startDrag, { passive: false });
+    dragZone.addEventListener('touchmove', moveDrag, { passive: false });
+    dragZone.addEventListener('touchend', endDrag);
+    dragZone.addEventListener('touchcancel', endDrag);
 
     loadImage(ASSETS.filter).catch(() => {
       showNotice('Le fichier filtre.png est introuvable ou mal nommé. Il doit être à la racine du dépôt.');
